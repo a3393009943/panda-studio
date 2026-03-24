@@ -39,7 +39,7 @@ export default function MusicPlayer() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const animationRef = useRef<number>()
 
-  // 多平台搜索 - 使用稳定的API
+  // 多平台搜索 - 使用多个可用API
   const searchSongs = async () => {
     if (!searchQuery.trim()) return
     setIsSearching(true)
@@ -48,49 +48,57 @@ export default function MusicPlayer() {
     const query = encodeURIComponent(searchQuery)
     const results: Song[] = []
 
-    try {
-      // 使用 meting-api (稳定可靠的聚合API)
-      const response = await fetch(`https://meting-api.pages.dev/api/search?server=netease&type=1&keyword=${query}`)
-      const data = await response.json()
-      
-      if (Array.isArray(data) && data.length > 0) {
-        const songs = data.slice(0, 20).map((song: any) => ({
-          id: `netease-${song.id}`,
-          name: song.name || '未知歌曲',
-          artist: song.artist || '未知歌手',
-          album: song.album || '未知专辑',
-          cover: song.pic || `https://picsum.photos/seed/${song.id}/300/300`,
-          url: song.url || '',
-          duration: 180,
-          platform: '网易云'
-        }))
-        results.push(...songs)
-      }
-    } catch (error) {
-      console.error('搜索失败:', error)
-    }
-
-    // 如果主API失败，尝试备用API
-    if (results.length === 0) {
-      try {
-        const response = await fetch(`https://music-api.gleam.run/netease/search?keyword=${query}&limit=15`)
-        const data = await response.json()
-        
-        if (data.code === 200 && Array.isArray(data.data)) {
-          const songs = data.data.map((song: any) => ({
-            id: `netease-${song.id}`,
-            name: song.name,
-            artist: song.artists?.map((a: any) => a.name).join(', ') || '未知歌手',
-            album: song.album?.name || '未知专辑',
-            cover: song.album?.picUrl || `https://picsum.photos/seed/${song.id}/300/300`,
+    // 尝试多个API源
+    const apis = [
+      // API 1: 小鱼音乐
+      async () => {
+        const res = await fetch(`https://api.xywm.ltd/163/music/search?key=${query}&limit=20`)
+        const data = await res.json()
+        if (data.code === 200 && data.data?.songs) {
+          return data.data.songs.map((s: any) => ({
+            id: `netease-${s.id}`,
+            name: s.name,
+            artist: s.ar?.map((a: any) => a.name).join(', ') || '未知歌手',
+            album: s.al?.name || '未知专辑',
+            cover: s.al?.picUrl || '',
             url: '',
-            duration: Math.floor(song.duration / 1000) || 180,
+            duration: Math.floor(s.dt / 1000) || 180,
             platform: '网易云'
           }))
+        }
+        return []
+      },
+      // API 2: 备用接口
+      async () => {
+        const res = await fetch(`https://api.wuxianxian.com/music/search?keywords=${query}&limit=15`)
+        const data = await res.json()
+        if (data.result?.songs) {
+          return data.result.songs.map((s: any) => ({
+            id: `netease-${s.id}`,
+            name: s.name,
+            artist: s.artists?.[0]?.name || '未知歌手',
+            album: s.album?.name || '未知专辑',
+            cover: s.album?.picUrl || '',
+            url: '',
+            duration: Math.floor(s.duration / 1000) || 180,
+            platform: '网易云'
+          }))
+        }
+        return []
+      }
+    ]
+
+    // 依次尝试API，直到有一个成功
+    for (const api of apis) {
+      try {
+        const songs = await api()
+        if (songs.length > 0) {
           results.push(...songs)
+          break
         }
       } catch (error) {
-        console.error('备用API搜索失败:', error)
+        console.log('API尝试失败，切换下一个:', error)
+        continue
       }
     }
 
@@ -105,26 +113,28 @@ export default function MusicPlayer() {
     
     if (song.platform === '网易云') {
       const neteaseId = song.id.replace('netease-', '')
-      try {
-        // 使用 meting-api 获取播放链接
-        const response = await fetch(`https://meting-api.pages.dev/api/url?server=netease&id=${neteaseId}`)
-        const data = await response.json()
-        if (data.url) {
-          return data.url
-        }
-      } catch (error) {
-        console.error('获取播放链接失败:', error)
-      }
       
-      // 备用API
-      try {
-        const response = await fetch(`https://music-api.gleam.run/netease/url?id=${neteaseId}`)
-        const data = await response.json()
-        if (data.code === 200 && data.data?.[0]?.url) {
-          return data.data[0].url
+      // 尝试多个API获取播放链接
+      const apis = [
+        async () => {
+          const res = await fetch(`https://api.xywm.ltd/163/music/url?id=${neteaseId}`)
+          const data = await res.json()
+          return data.data?.[0]?.url || ''
+        },
+        async () => {
+          const res = await fetch(`https://api.wuxianxian.com/music/url?id=${neteaseId}`)
+          const data = await res.json()
+          return data.data?.[0]?.url || ''
         }
-      } catch (error) {
-        console.error('备用API获取链接失败:', error)
+      ]
+      
+      for (const api of apis) {
+        try {
+          const url = await api()
+          if (url) return url
+        } catch (error) {
+          continue
+        }
       }
     }
     return ''
@@ -134,30 +144,31 @@ export default function MusicPlayer() {
   const fetchLyrics = async (song: Song) => {
     if (song.platform === '网易云') {
       const neteaseId = song.id.replace('netease-', '')
-      try {
-        // 使用 meting-api 获取歌词
-        const response = await fetch(`https://meting-api.pages.dev/api/lyric?server=netease&id=${neteaseId}`)
-        const data = await response.json()
-        if (data.lyric) {
-          const parsed = parseLyrics(data.lyric)
-          setLyrics(parsed)
-          return
-        }
-      } catch (error) {
-        console.error('获取歌词失败:', error)
-      }
       
-      // 备用API
-      try {
-        const response = await fetch(`https://music-api.gleam.run/netease/lyric?id=${neteaseId}`)
-        const data = await response.json()
-        if (data.code === 200 && data.lrc?.lyric) {
-          const parsed = parseLyrics(data.lrc.lyric)
-          setLyrics(parsed)
-          return
+      const apis = [
+        async () => {
+          const res = await fetch(`https://api.xywm.ltd/163/music/lyric?id=${neteaseId}`)
+          const data = await res.json()
+          return data.lrc?.lyric || data.lyric || ''
+        },
+        async () => {
+          const res = await fetch(`https://api.wuxianxian.com/music/lyric?id=${neteaseId}`)
+          const data = await res.json()
+          return data.lrc?.lyric || ''
         }
-      } catch (error) {
-        console.error('备用API获取歌词失败:', error)
+      ]
+      
+      for (const api of apis) {
+        try {
+          const lyric = await api()
+          if (lyric) {
+            const parsed = parseLyrics(lyric)
+            setLyrics(parsed)
+            return
+          }
+        } catch (error) {
+          continue
+        }
       }
     }
     setLyrics([{ time: 0, text: '暂无歌词' }])
