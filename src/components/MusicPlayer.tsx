@@ -1,9 +1,38 @@
 import { useState } from 'react'
-import { Music2, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { Music2, ExternalLink, X, ChevronUp, ChevronDown, Play, Pause } from 'lucide-react'
+
+// 精选歌单数据
+const PLAYLISTS = [
+  {
+    id: '19723756',
+    name: '飙升榜',
+    description: '网易云音乐飙升榜',
+    url: 'https://music.163.com/#/playlist?id=19723756'
+  },
+  {
+    id: '3778678',
+    name: '热歌榜',
+    description: '网易云音乐热歌榜',
+    url: 'https://music.163.com/#/playlist?id=3778678'
+  },
+  {
+    id: '3779629',
+    name: '新歌榜',
+    description: '网易云音乐新歌榜',
+    url: 'https://music.163.com/#/playlist?id=3779629'
+  },
+  {
+    id: '2884035',
+    name: '原创榜',
+    description: '网易云音乐原创榜',
+    url: 'https://music.163.com/#/playlist?id=2884035'
+  }
+]
 
 export default function MusicPlayer() {
   const [isOpen, setIsOpen] = useState(false)
-  const [showNetease, setShowNetease] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentPlaylist, setCurrentPlaylist] = useState(PLAYLISTS[0])
 
   return (
     <>
@@ -19,10 +48,25 @@ export default function MusicPlayer() {
             <ChevronUp className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* 歌曲信息提示 */}
-          <div className="flex-1 flex items-center gap-2 text-white/30">
-            <Music2 className="w-4 h-4" />
-            <span className="text-sm">点击展开播放音乐</span>
+          {/* 歌曲信息 */}
+          <div className="flex-1 flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+              <Music2 className="w-6 h-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-white font-medium truncate">{currentPlaylist.name}</p>
+              <p className="text-white/40 text-sm truncate">{currentPlaylist.description}</p>
+            </div>
+          </div>
+
+          {/* 播放控制 */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-11 h-11 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-pink-500/20"
+            >
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+            </button>
           </div>
         </div>
 
@@ -32,28 +76,29 @@ export default function MusicPlayer() {
             {/* 顶部栏 */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center">
-                  <Music2 className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center">
+                  <Music2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold">音乐播放器</h2>
-                  <p className="text-white/40 text-sm">网易云音乐</p>
+                  <h2 className="text-white font-semibold text-lg">音乐播放器</h2>
+                  <p className="text-white/40 text-sm">精选歌单</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowNetease(true)}
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://music.163.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="px-4 py-2 bg-white/5 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all text-sm flex items-center gap-2"
                 >
-                  <Music2 className="w-4 h-4" />
+                  <ExternalLink className="w-4 h-4" />
                   打开网易云音乐
-                </button>
+                </a>
                 
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-3 bg-white/5 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all"
-                  title="收起"
                 >
                   <ChevronDown className="w-6 h-6" />
                 </button>
@@ -61,26 +106,83 @@ export default function MusicPlayer() {
             </div>
 
             {/* 内容区域 */}
-            <div className="flex-1 flex items-center justify-center p-8">
-              {!showNetease ? (
-                <div className="text-center text-white/30">
-                  <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center">
-                    <Music2 className="w-16 h-16" />
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                {/* 当前播放 */}
+                <div className="mb-8">
+                  <h3 className="text-white/60 text-sm mb-4 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-gradient-to-b from-pink-500 to-purple-500 rounded-full" />
+                    当前播放
+                  </h3>
+                  <div className="bg-white/5 rounded-2xl p-6 flex items-center gap-6">
+                    <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                      <Music2 className="w-12 h-12 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white text-xl font-semibold mb-2">{currentPlaylist.name}</h4>
+                      <p className="text-white/40 mb-4">{currentPlaylist.description}</p>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={currentPlaylist.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full text-white font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+                        >
+                          <Play className="w-4 h-4" />
+                          前往播放
+                        </a>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xl mb-2">欢迎使用音乐播放器</p>
-                  <p className="text-sm mb-6">点击上方按钮打开网易云音乐</p>
-                  <p className="text-xs text-white/20">支持搜索、播放、歌词显示等功能</p>
                 </div>
-              ) : (
-                <div className="w-full h-full bg-black/30 rounded-2xl overflow-hidden">
-                  <iframe
-                    src="https://music.163.com/outchain/player?type=0&id=0&auto=0&height=66&bg=fafafa&text=333&mini=0"
-                    className="w-full h-full"
-                    allow="autoplay"
-                    frameBorder="0"
-                  />
+
+                {/* 歌单列表 */}
+                <div>
+                  <h3 className="text-white/60 text-sm mb-4 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-gradient-to-b from-pink-500 to-purple-500 rounded-full" />
+                    推荐歌单
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {PLAYLISTS.map((playlist) => (
+                      <button
+                        key={playlist.id}
+                        onClick={() => setCurrentPlaylist(playlist)}
+                        className={`p-4 rounded-xl transition-all text-left group ${
+                          currentPlaylist.id === playlist.id
+                            ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30'
+                            : 'bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <Music2 className={`w-8 h-8 ${currentPlaylist.id === playlist.id ? 'text-pink-400' : 'text-white/40'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-medium truncate ${currentPlaylist.id === playlist.id ? 'text-pink-400' : 'text-white'}`}>
+                              {playlist.name}
+                            </h4>
+                            <p className="text-white/40 text-sm truncate">{playlist.description}</p>
+                          </div>
+                          {currentPlaylist.id === playlist.id && (
+                            <div className="flex gap-0.5">
+                              <div className="w-1 h-4 bg-pink-400 animate-pulse" style={{ animationDelay: '0ms' }} />
+                              <div className="w-1 h-4 bg-pink-400 animate-pulse" style={{ animationDelay: '150ms' }} />
+                              <div className="w-1 h-4 bg-pink-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
+
+                {/* 提示 */}
+                <div className="mt-8 p-4 bg-white/5 rounded-xl">
+                  <p className="text-white/40 text-sm text-center">
+                    点击歌单后，点击"前往播放"按钮会在新标签页打开网易云音乐进行播放
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
