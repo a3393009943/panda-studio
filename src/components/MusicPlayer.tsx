@@ -39,7 +39,7 @@ export default function MusicPlayer() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const animationRef = useRef<number>()
 
-  // 多平台搜索
+  // 多平台搜索 - 使用稳定的API
   const searchSongs = async () => {
     if (!searchQuery.trim()) return
     setIsSearching(true)
@@ -48,112 +48,53 @@ export default function MusicPlayer() {
     const query = encodeURIComponent(searchQuery)
     const results: Song[] = []
 
-    // 并行搜索多个平台
-    const searchPromises = []
-
-    // 网易云音乐
-    searchPromises.push(
-      (async () => {
-        try {
-          const response = await fetch(`https://music-api.gdstudio.xyz/search?keywords=${query}&limit=15`)
-          const data = await response.json()
-          if (data.code === 200 && data.result?.songs) {
-            return data.result.songs.map((song: any) => ({
-              id: `netease-${song.id}`,
-              name: song.name,
-              artist: song.artists?.[0]?.name || '未知歌手',
-              album: song.album?.name || '未知专辑',
-              cover: song.album?.picUrl || `https://picsum.photos/seed/${song.id}/300/300`,
-              url: '',
-              duration: song.duration / 1000,
-              platform: '网易云'
-            }))
-          }
-        } catch (error) {
-          console.error('网易云搜索失败:', error)
-        }
-        return []
-      })()
-    )
-
-    // QQ音乐
-    searchPromises.push(
-      (async () => {
-        try {
-          const response = await fetch(`https://api.xingzhige.com/API/QQmusicVIP/?name=${query}&n=10`)
-          const data = await response.json()
-          if (data.code === 200 && data.data) {
-            const songs = Array.isArray(data.data) ? data.data : [data.data]
-            return songs.map((song: any, index: number) => ({
-              id: `qq-${song.songmid || index}`,
-              name: song.songname || song.name,
-              artist: song.singer?.[0]?.name || song.artist || '未知歌手',
-              album: song.albumname || song.album || '未知专辑',
-              cover: song.cover || `https://picsum.photos/seed/qq${index}/300/300`,
-              url: song.url || '',
-              duration: song.interval || 180,
-              platform: 'QQ音乐'
-            }))
-          }
-        } catch (error) {
-          console.error('QQ音乐搜索失败:', error)
-        }
-        return []
-      })()
-    )
-
-    // 酷我音乐
-    searchPromises.push(
-      (async () => {
-        try {
-          const response = await fetch(`https://api.xingzhige.com/API/Kuwo/?name=${query}&n=8`)
-          const data = await response.json()
-          if (data.code === 200 && data.data) {
-            const songs = Array.isArray(data.data) ? data.data : [data.data]
-            return songs.map((song: any, index: number) => ({
-              id: `kuwo-${song.rid || index}`,
-              name: song.name || song.songName,
-              artist: song.artist || song.singer || '未知歌手',
-              album: song.album || '未知专辑',
-              cover: song.pic || `https://picsum.photos/seed/kuwo${index}/300/300`,
-              url: song.url || '',
-              duration: song.duration || 180,
-              platform: '酷我音乐'
-            }))
-          }
-        } catch (error) {
-          console.error('酷我音乐搜索失败:', error)
-        }
-        return []
-      })()
-    )
-
-    // 等待所有搜索完成
-    const allResults = await Promise.all(searchPromises)
-    allResults.forEach(songs => results.push(...songs))
-
-    // 按平台混合排序
-    const shuffled: Song[] = []
-    const byPlatform: Record<string, Song[]> = {}
-    results.forEach(song => {
-      if (!byPlatform[song.platform]) byPlatform[song.platform] = []
-      byPlatform[song.platform].push(song)
-    })
-    
-    let index = 0
-    let hasMore = true
-    while (hasMore) {
-      hasMore = false
-      Object.values(byPlatform).forEach(platformSongs => {
-        if (index < platformSongs.length) {
-          shuffled.push(platformSongs[index])
-          hasMore = true
-        }
-      })
-      index++
+    try {
+      // 使用 meting-api (稳定可靠的聚合API)
+      const response = await fetch(`https://meting-api.pages.dev/api/search?server=netease&type=1&keyword=${query}`)
+      const data = await response.json()
+      
+      if (Array.isArray(data) && data.length > 0) {
+        const songs = data.slice(0, 20).map((song: any) => ({
+          id: `netease-${song.id}`,
+          name: song.name || '未知歌曲',
+          artist: song.artist || '未知歌手',
+          album: song.album || '未知专辑',
+          cover: song.pic || `https://picsum.photos/seed/${song.id}/300/300`,
+          url: song.url || '',
+          duration: 180,
+          platform: '网易云'
+        }))
+        results.push(...songs)
+      }
+    } catch (error) {
+      console.error('搜索失败:', error)
     }
 
-    setSearchResults(shuffled)
+    // 如果主API失败，尝试备用API
+    if (results.length === 0) {
+      try {
+        const response = await fetch(`https://music-api.gleam.run/netease/search?keyword=${query}&limit=15`)
+        const data = await response.json()
+        
+        if (data.code === 200 && Array.isArray(data.data)) {
+          const songs = data.data.map((song: any) => ({
+            id: `netease-${song.id}`,
+            name: song.name,
+            artist: song.artists?.map((a: any) => a.name).join(', ') || '未知歌手',
+            album: song.album?.name || '未知专辑',
+            cover: song.album?.picUrl || `https://picsum.photos/seed/${song.id}/300/300`,
+            url: '',
+            duration: Math.floor(song.duration / 1000) || 180,
+            platform: '网易云'
+          }))
+          results.push(...songs)
+        }
+      } catch (error) {
+        console.error('备用API搜索失败:', error)
+      }
+    }
+
+    setSearchResults(results)
     setIsSearching(false)
   }
 
@@ -165,35 +106,25 @@ export default function MusicPlayer() {
     if (song.platform === '网易云') {
       const neteaseId = song.id.replace('netease-', '')
       try {
-        const response = await fetch(`https://music-api.gdstudio.xyz/song/url?id=${neteaseId}`)
+        // 使用 meting-api 获取播放链接
+        const response = await fetch(`https://meting-api.pages.dev/api/url?server=netease&id=${neteaseId}`)
+        const data = await response.json()
+        if (data.url) {
+          return data.url
+        }
+      } catch (error) {
+        console.error('获取播放链接失败:', error)
+      }
+      
+      // 备用API
+      try {
+        const response = await fetch(`https://music-api.gleam.run/netease/url?id=${neteaseId}`)
         const data = await response.json()
         if (data.code === 200 && data.data?.[0]?.url) {
           return data.data[0].url
         }
       } catch (error) {
-        console.error('获取网易云链接失败:', error)
-      }
-    } else if (song.platform === 'QQ音乐') {
-      const qqId = song.id.replace('qq-', '')
-      try {
-        const response = await fetch(`https://api.xingzhige.com/API/QQmusicVIP/?id=${qqId}`)
-        const data = await response.json()
-        if (data.code === 200 && data.data?.url) {
-          return data.data.url
-        }
-      } catch (error) {
-        console.error('获取QQ音乐链接失败:', error)
-      }
-    } else if (song.platform === '酷我音乐') {
-      const kuwoId = song.id.replace('kuwo-', '')
-      try {
-        const response = await fetch(`https://api.xingzhige.com/API/Kuwo/?rid=${kuwoId}`)
-        const data = await response.json()
-        if (data.code === 200 && data.data?.url) {
-          return data.data.url
-        }
-      } catch (error) {
-        console.error('获取酷我音乐链接失败:', error)
+        console.error('备用API获取链接失败:', error)
       }
     }
     return ''
@@ -204,7 +135,21 @@ export default function MusicPlayer() {
     if (song.platform === '网易云') {
       const neteaseId = song.id.replace('netease-', '')
       try {
-        const response = await fetch(`https://music-api.gdstudio.xyz/lyric?id=${neteaseId}`)
+        // 使用 meting-api 获取歌词
+        const response = await fetch(`https://meting-api.pages.dev/api/lyric?server=netease&id=${neteaseId}`)
+        const data = await response.json()
+        if (data.lyric) {
+          const parsed = parseLyrics(data.lyric)
+          setLyrics(parsed)
+          return
+        }
+      } catch (error) {
+        console.error('获取歌词失败:', error)
+      }
+      
+      // 备用API
+      try {
+        const response = await fetch(`https://music-api.gleam.run/netease/lyric?id=${neteaseId}`)
         const data = await response.json()
         if (data.code === 200 && data.lrc?.lyric) {
           const parsed = parseLyrics(data.lrc.lyric)
@@ -212,20 +157,7 @@ export default function MusicPlayer() {
           return
         }
       } catch (error) {
-        console.error('获取网易云歌词失败:', error)
-      }
-    } else if (song.platform === 'QQ音乐') {
-      const qqId = song.id.replace('qq-', '')
-      try {
-        const response = await fetch(`https://api.xingzhige.com/API/QQmusicVIP/?id=${qqId}&lyric=1`)
-        const data = await response.json()
-        if (data.code === 200 && data.data?.lyric) {
-          const parsed = parseLyrics(data.data.lyric)
-          setLyrics(parsed)
-          return
-        }
-      } catch (error) {
-        console.error('获取QQ音乐歌词失败:', error)
+        console.error('备用API获取歌词失败:', error)
       }
     }
     setLyrics([{ time: 0, text: '暂无歌词' }])
