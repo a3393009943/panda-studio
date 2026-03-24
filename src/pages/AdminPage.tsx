@@ -14,7 +14,17 @@ import type { Work, Article } from '../types'
 
 // ==================== 类型定义 ====================
 
-type Tab = 'dashboard' | 'works' | 'articles' | 'settings' | 'security'
+type Tab = 'dashboard' | 'pages' | 'works' | 'articles' | 'settings' | 'security'
+
+interface Page {
+  id: string
+  title: string
+  slug: string
+  content: string
+  metaTitle: string
+  metaDescription: string
+  updated: string
+}
 
 interface SiteSettings {
   siteName: string
@@ -57,6 +67,37 @@ const defaultSettings: SiteSettings = {
   defaultTheme: 'dark',
   enableAnalytics: false,
 }
+
+// 默认页面内容
+const defaultPages: Page[] = [
+  {
+    id: 'home',
+    title: '首页',
+    slug: 'home',
+    content: '<h1>欢迎访问 Panda Studio</h1><p>这里是首页内容...</p>',
+    metaTitle: 'Panda Studio - 品牌设计工作室',
+    metaDescription: 'Design is how it works. 一个专注于品牌设计、视觉传达的设计工作室。',
+    updated: new Date().toISOString()
+  },
+  {
+    id: 'about',
+    title: '关于',
+    slug: 'about',
+    content: '<h1>关于我们</h1><p>这里是关于页面内容...</p>',
+    metaTitle: '关于 - Panda Studio',
+    metaDescription: '了解 Panda Studio 的故事和团队',
+    updated: new Date().toISOString()
+  },
+  {
+    id: 'contact',
+    title: '联系',
+    slug: 'contact',
+    content: '<h1>联系我们</h1><p>这里是联系页面内容...</p>',
+    metaTitle: '联系我们 - Panda Studio',
+    metaDescription: '欢迎联系 Panda Studio',
+    updated: new Date().toISOString()
+  }
+]
 
 // 分析数据
 const analyticsData = {
@@ -104,6 +145,7 @@ function Sidebar({
       title: '内容管理',
       items: [
         { id: 'dashboard' as Tab, label: '数据概览', icon: LayoutGrid },
+        { id: 'pages' as Tab, label: '页面管理', icon: FileText },
         { id: 'works' as Tab, label: '作品管理', icon: Image },
         { id: 'articles' as Tab, label: '文章管理', icon: FileEdit },
       ]
@@ -820,6 +862,171 @@ function SettingsPage({ settings, onSave }: { settings: SiteSettings; onSave: (s
   )
 }
 
+// ==================== 组件：页面管理 ====================
+
+function PagesEditor({ pages, onSave }: { pages: Page[]; onSave: (pages: Page[]) => void }) {
+  const [editingPage, setEditingPage] = useState<Page | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+
+  const handleSavePage = (page: Page) => {
+    if (isCreating) {
+      onSave([...pages, { ...page, id: Date.now().toString(), updated: new Date().toISOString() }])
+    } else {
+      onSave(pages.map(p => p.id === page.id ? { ...page, updated: new Date().toISOString() } : p))
+    }
+    setEditingPage(null)
+    setIsCreating(false)
+  }
+
+  const handleDeletePage = (id: string) => {
+    if (confirm('确定删除这个页面吗？')) {
+      onSave(pages.filter(p => p.id !== id))
+    }
+  }
+
+  if (editingPage) {
+    return (
+      <form onSubmit={(e) => {
+        e.preventDefault()
+        handleSavePage(editingPage)
+      }} className="max-w-3xl space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">{isCreating ? '添加新页面' : '编辑页面'}</h2>
+          <button
+            type="button"
+            onClick={() => { setEditingPage(null); setIsCreating(false) }}
+            className="px-4 py-2 text-zinc-500 hover:text-zinc-900"
+          >
+            取消
+          </button>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">页面标题</label>
+            <input
+              type="text"
+              value={editingPage.title}
+              onChange={e => setEditingPage({ ...editingPage, title: e.target.value })}
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-900"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Slug (URL路径)</label>
+            <input
+              type="text"
+              value={editingPage.slug}
+              onChange={e => setEditingPage({ ...editingPage, slug: e.target.value })}
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-900"
+              placeholder="about"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">页面内容</label>
+            <RichTextEditor value={editingPage.content} onChange={v => setEditingPage({ ...editingPage, content: v })} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Meta 标题</label>
+            <input
+              type="text"
+              value={editingPage.metaTitle}
+              onChange={e => setEditingPage({ ...editingPage, metaTitle: e.target.value })}
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-900"
+              placeholder="页面标题 - 网站名称"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Meta 描述</label>
+            <textarea
+              value={editingPage.metaDescription}
+              onChange={e => setEditingPage({ ...editingPage, metaDescription: e.target.value })}
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-900"
+              rows={3}
+              placeholder="页面描述，用于SEO"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => { setEditingPage(null); setIsCreating(false) }}
+            className="px-4 py-2 text-zinc-500 hover:text-zinc-900"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90"
+          >
+            <Save size={18} /> 保存
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">页面管理 ({pages.length})</h2>
+        <button
+          onClick={() => {
+            setEditingPage({
+              id: '',
+              title: '',
+              slug: '',
+              content: '',
+              metaTitle: '',
+              metaDescription: '',
+              updated: new Date().toISOString()
+            })
+            setIsCreating(true)
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium hover:bg-accent"
+        >
+          <Plus size={18} /> 添加页面
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {pages.map(page => (
+          <div
+            key={page.id}
+            className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700"
+          >
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold">{page.title}</h3>
+              <p className="text-sm text-zinc-500">/{page.slug}</p>
+              <p className="text-xs text-zinc-400 mt-1">更新于: {new Date(page.updated).toLocaleDateString('zh-CN')}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setEditingPage(page); setIsCreating(false) }}
+                className="p-2 text-zinc-500 hover:text-accent"
+              >
+                <Edit size={18} />
+              </button>
+              <button
+                onClick={() => handleDeletePage(page.id)}
+                className="p-2 text-zinc-500 hover:text-red-500"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ==================== 组件：安全设置 ====================
 
 function SecurityPage() {
@@ -974,6 +1181,10 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [works, setWorks] = useState<Work[]>(initialWorks)
   const [articles, setArticles] = useState<Article[]>(initialArticles)
+  const [pages, setPages] = useState<Page[]>(() => {
+    const saved = localStorage.getItem('site_pages')
+    return saved ? JSON.parse(saved) : defaultPages
+  })
   const [settings, setSettings] = useState<SiteSettings>(() => {
     const saved = localStorage.getItem('site_settings')
     return saved ? JSON.parse(saved) : defaultSettings
@@ -1009,8 +1220,13 @@ export default function AdminPage() {
     if (confirm('确定删除这篇文章吗？')) setArticles(articles.filter(a => a.id !== id))
   }
 
+  const handleSavePages = (newPages: Page[]) => {
+    setPages(newPages)
+    localStorage.setItem('site_pages', JSON.stringify(newPages))
+  }
+
   const exportData = () => {
-    const data = { works, articles, settings }
+    const data = { works, articles, settings, pages }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -1032,7 +1248,10 @@ export default function AdminPage() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard data={analyticsData} />
-      
+
+      case 'pages':
+        return <PagesEditor pages={pages} onSave={handleSavePages} />
+
       case 'works':
         return (
           <div className="space-y-6">

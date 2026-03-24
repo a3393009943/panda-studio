@@ -59,6 +59,14 @@ export default function Footer() {
             <Link to="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">Works</Link>
             <Link to="/articles" className="hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">Articles</Link>
             <Link to="/about" className="hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">About</Link>
+            {/* 隐蔽的后台管理入口 */}
+            <Link
+              to="/admin"
+              className="text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-600 transition-colors cursor-pointer select-none"
+              title="后台管理"
+            >
+              Admin
+            </Link>
           </nav>
         </div>
       </div>

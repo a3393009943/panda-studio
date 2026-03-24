@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, ArrowRight, Layers, Grid3X3 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 import type { Work } from '../types'
 import { works } from '../data'
-
-type ViewMode = 'slider' | 'grid'
 
 // 轮播图组件 - 大通栏
 function HeroSlider({ works, onSlideChange }: { works: Work[]; onSlideChange: (work: Work) => void }) {
@@ -192,12 +190,11 @@ function WorksGrid({ works }: { works: Work[] }) {
 
 export default function WorksPage() {
   const { t } = useTranslation()
-  const [view, setView] = useState<ViewMode>('slider') // 默认为slider（大通栏）
   const [activeCategory, setActiveCategory] = useState('All')
-  
+
   const categories = ['All', ...Array.from(new Set(works.map(w => w.category)))]
-  const filtered = activeCategory === 'All' 
-    ? works 
+  const filtered = activeCategory === 'All'
+    ? works
     : works.filter(w => w.category === activeCategory)
 
   const handleSlideChange = (_work: Work) => {
@@ -223,32 +220,6 @@ export default function WorksPage() {
               {t('works.subtitle')}
             </p>
           </div>
-
-          {/* 视图切换按钮 */}
-          <div className="flex items-center gap-1.5 glass rounded-xl p-1.5 self-start">
-            <button
-              onClick={() => setView('slider')}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                view === 'slider'
-                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-              }`}
-              title="轮播视图"
-            >
-              <Layers size={18} />
-            </button>
-            <button
-              onClick={() => setView('grid')}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                view === 'grid'
-                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-              }`}
-              title="网格视图"
-            >
-              <Grid3X3 size={18} />
-            </button>
-          </div>
         </div>
 
         {/* 分类筛选标签 */}
@@ -258,8 +229,8 @@ export default function WorksPage() {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
-                activeCategory === cat 
-                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' 
+                activeCategory === cat
+                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
@@ -269,10 +240,8 @@ export default function WorksPage() {
         </div>
       </div>
 
-      {/* 瀑布流网格 */}
-      {view === 'grid' && (
-        <WorksGrid works={filtered} />
-      )}
+      {/* 瀑布流网格 - 始终显示 */}
+      <WorksGrid works={filtered} />
 
       {/* 空状态 */}
       {filtered.length === 0 && (

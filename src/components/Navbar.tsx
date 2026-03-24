@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Sun, Moon, Menu, X, Globe, Settings } from 'lucide-react'
+import { Sun, Moon, Menu, X, Globe } from 'lucide-react'
 import { languages } from '../i18n'
 
 const navItems = [
@@ -118,16 +118,6 @@ export default function Navbar() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              {/* Admin Link */}
-              <Link
-                to="/admin"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all duration-200 cursor-pointer"
-                aria-label="Admin"
-                title="后台管理"
-              >
-                <Settings size={18} />
-              </Link>
-
               {/* Language Switcher */}
               <div className="relative" ref={langRef}>
                 <button
