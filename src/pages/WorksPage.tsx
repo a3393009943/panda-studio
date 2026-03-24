@@ -1,199 +1,285 @@
-import { useState, useEffect } from 'react'
-import { ArrowRight, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { ChevronLeft, ChevronRight, ArrowRight, Layers, Grid3X3 } from 'lucide-react'
+import type { Work } from '../types'
+import { works } from '../data'
 
-interface Work {
-  id: string
-  title: string
-  description: string
-  image: string
-  category: string
-  year: string
-  tags: string[]
-  link?: string
+type ViewMode = 'slider' | 'grid'
+
+// 轮播图组件 - 大通栏
+function HeroSlider({ works, onSlideChange }: { works: Work[]; onSlideChange: (work: Work) => void }) {
+  const [current, setCurrent] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
+  const intervalRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    intervalRef.current = window.setInterval(() => {
+      setCurrent(c => (c + 1) % works.length)
+    }, 5000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [works.length])
+
+  useEffect(() => {
+    onSlideChange(works[current])
+  }, [current, works, onSlideChange])
+
+  const prev = () => setCurrent(c => (c - 1 + works.length) % works.length)
+  const next = () => setCurrent(c => (c + 1) % works.length)
+
+  return (
+    <div 
+      className="relative h-[75vh] w-full overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Slides */}
+      {works.map((work, index) => (
+        <div
+          key={work.id}
+          className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+            index === current ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+          }`}
+        >
+          <div className="absolute inset-0">
+            <img
+              src={work.image}
+              alt={work.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+          </div>
+
+          <div className="relative h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center">
+            <div className="max-w-2xl">
+              {/* 分类和年份 */}
+              <div className="flex items-center gap-3 mb-5">
+                <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-medium border border-white/30">
+                  {work.category}
+                </span>
+                <span className="text-white/70 text-sm">{work.year}</span>
+                {work.featured && (
+                  <span className="px-3 py-1.5 rounded-full bg-white text-black text-xs font-medium">
+                    Featured
+                  </span>
+                )}
+              </div>
+
+              {/* 标题 */}
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-5 leading-tight tracking-tight">
+                {work.title}
+              </h1>
+
+              {/* 描述 */}
+              <p className="text-lg text-white/80 mb-8 max-w-xl leading-relaxed">
+                {work.description}
+              </p>
+
+              {/* 标签 */}
+              <div className="flex flex-wrap gap-2 mb-8">
+                {work.tags.map(tag => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm border border-white/20"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              {/* 查看详情按钮 */}
+              <Link
+                to={`/works/${work.id}`}
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-black rounded-full font-semibold hover:bg-white/90 transition-all hover:scale-105"
+              >
+                查看详情 <ArrowRight size={18} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* 左右导航箭头 */}
+      <button
+        onClick={prev}
+        className={`absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+      >
+        <ChevronLeft size={26} />
+      </button>
+      <button
+        onClick={next}
+        className={`absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+      >
+        <ChevronRight size={26} />
+      </button>
+
+      {/* 底部指示点 */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2.5">
+        {works.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrent(index)}
+            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+              index === current 
+                ? 'bg-white w-10' 
+                : 'bg-white/40 hover:bg-white/60 w-2'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* 向下滚动提示 */}
+      <div className="absolute bottom-8 right-8 text-white/60 text-sm flex items-center gap-2 animate-bounce">
+        <span>向下滚动</span>
+        <ChevronRight className="rotate-90" size={16} />
+      </div>
+    </div>
+  )
+}
+
+// 瀑布流网格组件
+function WorksGrid({ works }: { works: Work[] }) {
+  const { t } = useTranslation()
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
+        {works.map(work => (
+          <Link
+            key={work.id}
+            to={`/works/${work.id}`}
+            className="group relative overflow-hidden rounded-2xl bg-zinc-50 dark:bg-zinc-900"
+          >
+            <div className="aspect-[4/3] overflow-hidden">
+              <img
+                src={work.image}
+                alt={work.title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
+              />
+            </div>
+            <div className="absolute inset-0 flex flex-col justify-end p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{
+                background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-medium uppercase tracking-wider text-white/70">
+                  {work.category}
+                </span>
+                <span className="text-white/30">·</span>
+                <span className="text-xs text-white/70">{work.year}</span>
+              </div>
+              <h3 className="text-white font-bold text-xl leading-tight">
+                {work.title}
+              </h3>
+            </div>
+            {work.featured && (
+              <div className="absolute top-3 left-3">
+                <span className="px-2.5 py-1 rounded-full bg-white text-black text-xs font-medium">
+                  {t('common.featured')}
+                </span>
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function WorksPage() {
-  const [works, setWorks] = useState<Work[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>('全部')
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    // 加载作品数据
-    const loadWorks = async () => {
-      setIsLoading(true)
-      try {
-        // 这里可以替换为你的实际API或数据源
-        const response = await fetch('/api/works.json')
-        const data = await response.json()
-        setWorks(data)
-      } catch (error) {
-        console.error('加载作品失败:', error)
-        // 使用默认数据
-        setWorks([
-          {
-            id: '1',
-            title: '品牌设计',
-            description: '为科技初创公司打造的品牌视觉系统',
-            image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800&h=600&fit=crop',
-            category: '品牌',
-            year: '2024',
-            tags: ['品牌', 'Logo', 'VI']
-          },
-          {
-            id: '2',
-            title: 'UI/UX设计',
-            description: '移动端金融App的用户体验优化',
-            image: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=600&fit=crop',
-            category: 'UI',
-            year: '2024',
-            tags: ['UI', 'UX', '移动端']
-          },
-          {
-            id: '3',
-            title: '包装设计',
-            description: '高端化妆品系列的包装创新设计',
-            image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800&h=600&fit=crop',
-            category: '包装',
-            year: '2023',
-            tags: ['包装', '印刷', '产品']
-          }
-        ])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadWorks()
-  }, [])
-
-  const categories = ['全部', ...Array.from(new Set(works.map(w => w.category)))]
-  const filteredWorks = selectedCategory === '全部' 
+  const { t } = useTranslation()
+  const [view, setView] = useState<ViewMode>('slider') // 默认为slider（大通栏）
+  const [activeCategory, setActiveCategory] = useState('All')
+  
+  const categories = ['All', ...Array.from(new Set(works.map(w => w.category)))]
+  const filtered = activeCategory === 'All' 
     ? works 
-    : works.filter(w => w.category === selectedCategory)
+    : works.filter(w => w.category === activeCategory)
+
+  const handleSlideChange = (_work: Work) => {
+    // 可以根据当前轮播作品更新分类
+  }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      {/* 顶部标题区 */}
-      <div className="pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <h1 className="text-5xl md:text-7xl font-bold text-zinc-900 dark:text-white mb-6 tracking-tight">
-            作品集
-          </h1>
-          <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl">
-            探索我的设计作品，涵盖品牌、UI/UX、包装等多个领域
-          </p>
+    <div className="min-h-screen">
+      {/* 大通栏轮播 - 始终显示 */}
+      <HeroSlider works={filtered.slice(0, 6)} onSlideChange={handleSlideChange} />
+
+      {/* 标题和控制区 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-zinc-400 mb-3">
+              {t('works.portfolio')}
+            </p>
+            <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-white mb-4">
+              {t('works.title')}
+            </h1>
+            <p className="text-zinc-500 dark:text-zinc-400 max-w-lg leading-relaxed">
+              {t('works.subtitle')}
+            </p>
+          </div>
+
+          {/* 视图切换按钮 */}
+          <div className="flex items-center gap-1.5 glass rounded-xl p-1.5 self-start">
+            <button
+              onClick={() => setView('slider')}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                view === 'slider'
+                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+              }`}
+              title="轮播视图"
+            >
+              <Layers size={18} />
+            </button>
+            <button
+              onClick={() => setView('grid')}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                view === 'grid'
+                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+              }`}
+              title="网格视图"
+            >
+              <Grid3X3 size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* 分类筛选标签 */}
+        <div className="flex flex-wrap gap-2.5 mt-7">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                activeCategory === cat 
+                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' 
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* 分类筛选 */}
-      <div className="sticky top-16 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 z-40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center gap-2 overflow-x-auto py-4 scrollbar-hide">
-            {categories.map(category => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`
-                  px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap
-                  ${selectedCategory === category
-                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                  }
-                `}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
+      {/* 瀑布流网格 */}
+      {view === 'grid' && (
+        <WorksGrid works={filtered} />
+      )}
+
+      {/* 空状态 */}
+      {filtered.length === 0 && (
+        <div className="text-center py-24 text-zinc-400">
+          暂无该分类的作品
         </div>
-      </div>
-
-      {/* 作品网格 */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />
-          </div>
-        ) : filteredWorks.length === 0 ? (
-          <div className="text-center py-24">
-            <p className="text-zinc-500 dark:text-zinc-400 text-lg">暂无作品</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredWorks.map(work => (
-              <a
-                key={work.id}
-                href={work.link || '#'}
-                className="group block"
-              >
-                <div className="relative overflow-hidden rounded-2xl bg-zinc-50 dark:bg-zinc-900 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-zinc-200/50 dark:group-hover:shadow-white/5">
-                  {/* 图片 */}
-                  <div className="aspect-[4/3] overflow-hidden">
-                    <img
-                      src={work.image}
-                      alt={work.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  </div>
-
-                  {/* 内容 */}
-                  <div className="p-6">
-                    {/* 分类标签 */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="px-3 py-1 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-medium rounded-full">
-                        {work.category}
-                      </span>
-                      <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {work.year}
-                      </span>
-                    </div>
-
-                    {/* 标题 */}
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
-                      {work.title}
-                    </h2>
-
-                    {/* 描述 */}
-                    <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4 line-clamp-2">
-                      {work.description}
-                    </p>
-
-                    {/* 标签 */}
-                    <div className="flex flex-wrap gap-2">
-                      {work.tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 悬浮箭头 */}
-                  <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-12 h-12 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center shadow-lg">
-                      <ArrowRight className="w-5 h-5 text-white dark:text-zinc-900" />
-                    </div>
-                  </div>
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 底部 */}
-      <div className="py-16 text-center">
-        <a
-          href="mailto:hello@panda-studio.com"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-        >
-          <span>开始合作</span>
-          <ExternalLink className="w-4 h-4" />
-        </a>
-      </div>
+      )}
     </div>
   )
 }
