@@ -231,7 +231,7 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
     
     await new Promise(r => setTimeout(r, 500))
     
-    const storedPassword = localStorage.getItem('admin_password') || '123456'
+    const storedPassword = localStorage.getItem('admin_password') || 'panda2026'
     if (password === storedPassword) {
       localStorage.setItem('admin_logged_in', 'true')
       onLogin()
@@ -287,7 +287,7 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
         </div>
         
         <p className="mt-6 text-center text-sm text-zinc-500">
-          默认密码：123456
+          默认密码：panda2026
         </p>
       </div>
     </div>
